@@ -13,6 +13,7 @@ DB_PORT = os.environ.get("DB_PORT", "5432")
 DB_NAME = os.environ.get("DB_NAME", "olist")
 DB_USER = os.environ.get("DB_USER", "admin")
 DB_PASS = os.environ.get("DB_PASS", "admin")
+DB_ADMIN_USER = os.getenv('DB_ADMIN_USER', 'postgres')
 
 csv_paths = {'products': ('data/olist_products_dataset.csv', create_products_table_if_not_exists),
              'sellers': ('data/olist_sellers_dataset.csv', create_sellers_table_if_not_exists),
@@ -70,7 +71,7 @@ def create_db_with_psql():
         # Using psql command-line
         subprocess.run([
             'psql',
-            '-U', os.getenv('DB_ADMIN_USER', 'postgres'),
+            '-U', DB_ADMIN_USER,
             '-h', DB_HOST,
             '-p', DB_PORT,
             '-c', 'CREATE DATABASE olist;'
