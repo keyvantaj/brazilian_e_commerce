@@ -1,11 +1,7 @@
 import pandas as pd
-import psycopg2
-from io import StringIO
 import os
 import subprocess
-from create_sql_tables import *
-from psycopg2.extras import execute_values
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
 # Load env vars
 DB_HOST = os.environ.get("DB_HOST", "localhost")
@@ -15,17 +11,15 @@ DB_USER = os.environ.get("DB_USER", "admin")
 DB_PASS = os.environ.get("DB_PASS", "admin")
 DB_ADMIN_USER = os.getenv('DB_ADMIN_USER', 'postgres')
 
-csv_paths = {'products': ('data/olist_products_dataset.csv', create_products_table_if_not_exists),
-             'sellers': ('data/olist_sellers_dataset.csv', create_sellers_table_if_not_exists),
-             'orders': ('data/olist_orders_dataset.csv', create_orders_table_if_not_exists),
-             'customers': ('data/olist_customers_dataset.csv', create_customers_table_if_not_exists),
-             'geolocation': ('data/olist_geolocation_dataset.csv', create_geolocation_table_if_not_exists),
-             'order_items': ('data/olist_order_items_dataset.csv', create_order_items_if_not_exists),
-             'order_reviews': ('data/olist_order_reviews_dataset.csv', create_order_reviews_if_not_exists),
-             'product_categories': ('data/product_category_name_translation.csv', create_product_categories_if_not_exists),
-             'order_payments': ('data/olist_order_payments_dataset.csv', create_order_payments_table_if_not_exists)
-             }
-
+csv_paths = {'products': 'data/olist_products_dataset.csv',
+             'sellers': 'data/olist_sellers_dataset.csv',
+             'orders': 'data/olist_orders_dataset.csv',
+             'customers': 'data/olist_customers_dataset.csv',
+             'geolocation': 'data/olist_geolocation_dataset.csv',
+             'order_items': 'data/olist_order_items_dataset.csv',
+             'order_reviews': 'data/olist_order_reviews_dataset.csv',
+             'product_categories': 'data/product_category_name_translation.csv',
+             'order_payments': 'data/olist_order_payments_dataset.csv'}
 
 def coerce_column_types(df, target_types=None, errors="raise"):
     """
@@ -126,6 +120,7 @@ def load_data(file_path):
         df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
         df = df.replace('', None)  # Remplacer les chaînes vides par NULL
         df = df.loc[:, df.isnull().mean() < 0.8]
+        df.drop_duplicates(keep='first')
 
         return df
 
@@ -145,7 +140,7 @@ def create_postgres_connection():
 def copy_data_to_postgres(df, table_name, engine):
     """Insère les données dans PostgreSQL en utilisant copy_from pour une meilleure performance"""
     try:
-        df.to_sql(table_name, engine, index=False)  # or append
+        df.to_sql(table_name, engine, index=False, if_exists="append")  # or append
         print(f"{len(df)} copiés avec succès.")
     except Exception as e:
         print(f"Erreur lors de copie des données: {e}")
@@ -163,17 +158,13 @@ def compare_csv_to_postgresql(engine, df, table_name):
     removed_from_df_csv = removed_from_df_csv[removed_from_df_csv['_merge'] == 'left_only'].drop('_merge', axis=1)
 
     # Similarly, if you want rows in df1 that are not in df2 (deleted from df2)
-    added_to_df_csv = df.merge(df_db, how='left', indicator=True)
-    added_to_df_csv = added_to_df_csv[added_to_df_csv['_merge'] == 'left_only'].drop('_merge', axis=1)
+    # added_to_df_csv = df.merge(df_db, how='left', indicator=True)
+    # added_to_df_csv = added_to_df_csv[added_to_df_csv['_merge'] == 'left_only'].drop('_merge', axis=1)
 
-    print('added_to_df_csv', added_to_df_csv)
+    # print('added_to_df_csv', added_to_df_csv)
     print('removed_from_df_csv', removed_from_df_csv)
     print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
     print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-
-    if not added_to_df_csv.empty:
-
-        df.to_sql(table_name, engine, index=False, if_exists="append")  # or append
 
     if not removed_from_df_csv.empty:
 
@@ -192,7 +183,7 @@ def main():
 
     for key,value in csv_paths.items():
     # Charger les données
-        df = load_data(value[0])
+        df = load_data(value)
         print(key)
         print(df)
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
