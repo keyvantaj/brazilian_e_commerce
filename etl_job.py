@@ -115,7 +115,10 @@ if __name__ == "__main__":
         "password": DB_PASS,
         "driver": "org.postgresql.Driver"
     }
-    
+
     jdbc_url_dash = "jdbc:postgresql://{}:{}/{}".format(DB_HOST, DB_PORT, 'dash')
     monthly_revenue_df_selected.write \
-        .jdbc(url=jdbc_url_dash, table='monthly_revenue', mode="overwrite", properties=properties)
+        .jdbc(url=jdbc_url_dash,
+              table='monthly_revenue',
+              mode="overwrite",
+              properties=properties)
