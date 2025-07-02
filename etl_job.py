@@ -79,7 +79,10 @@ def monthly_sales_growth(payments_df, orders_df):
     )
 
     # Show results
-    monthly_revenue_df.select("order_month", "monthly_revenue", "mom_growth_percent").show()
+
+    monthly_revenue_df_selected = monthly_revenue_df.select("order_month", "monthly_revenue", "mom_growth_percent")
+    monthly_revenue_df_selected.show()
+    return monthly_revenue_df_selected
 
 if __name__ == "__main__":
     # Initialize Spark Session with PostgreSQL JDBC driver
@@ -105,6 +108,14 @@ if __name__ == "__main__":
     print(f"Total Revenue: R${total_sum:,.2f}")
     print(f"Average Order Value: R${aov:,.2f}")
 
-    monthly_sales_growth(payments_df=olist_data['order_payments'],
-                         orders_df=olist_data['orders'])
-
+    monthly_revenue_df_selected = monthly_sales_growth(payments_df=olist_data['order_payments'],
+                                                       orders_df=olist_data['orders'])
+    properties = {
+        "user": DB_USER,
+        "password": DB_PASS,
+        "driver": "org.postgresql.Driver"
+    }
+    
+    jdbc_url_dash = "jdbc:postgresql://{}:{}/{}".format(DB_HOST, DB_PORT, 'dash')
+    monthly_revenue_df_selected.write \
+        .jdbc(url=jdbc_url_dash, table='monthly_revenue', mode="overwrite", properties=properties)

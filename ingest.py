@@ -60,7 +60,7 @@ def coerce_column_types(df, target_types=None, errors="raise"):
 
     return df
 
-def create_db_with_psql():
+def create_db_with_psql(db_name):
     try:
         # Using psql command-line
         subprocess.run([
@@ -68,7 +68,7 @@ def create_db_with_psql():
             '-U', DB_ADMIN_USER,
             '-h', DB_HOST,
             '-p', DB_PORT,
-            '-c', 'CREATE DATABASE olist;'
+            '-c', f"CREATE DATABASE {db_name};"
         ], check=True)
         print("Database created successfully")
         return True
@@ -128,10 +128,10 @@ def load_data(file_path):
         print(f"Erreur lors du chargement des données: {e}")
         return None
 
-def create_postgres_connection():
+def create_postgres_connection(db_name):
     """Crée une connexion à la base de données PostgreSQL"""
     try:
-        engine = create_engine("postgresql://{}:{}@{}:{}/{}".format(DB_USER, DB_PASS, DB_HOST, DB_PORT, DB_NAME))
+        engine = create_engine("postgresql://{}:{}@{}:{}/{}".format(DB_USER, DB_PASS, DB_HOST, DB_PORT, db_name))
         return engine
     except Exception as e:
         print(f"Erreur de connexion à PostgreSQL: {e}")
@@ -140,7 +140,7 @@ def create_postgres_connection():
 def copy_data_to_postgres(df, table_name, engine):
     """Insère les données dans PostgreSQL en utilisant copy_from pour une meilleure performance"""
     try:
-        df.to_sql(table_name, engine, index=False, if_exists="append")  # or append
+        df.to_sql(table_name, engine, index=False, if_exists="fail")
         print(f"{len(df)} copiés avec succès.")
     except Exception as e:
         print(f"Erreur lors de copie des données: {e}")
@@ -158,26 +158,25 @@ def compare_csv_to_postgresql(engine, df, table_name):
     removed_from_df_csv = removed_from_df_csv[removed_from_df_csv['_merge'] == 'left_only'].drop('_merge', axis=1)
 
     # Similarly, if you want rows in df1 that are not in df2 (deleted from df2)
-    # added_to_df_csv = df.merge(df_db, how='left', indicator=True)
-    # added_to_df_csv = added_to_df_csv[added_to_df_csv['_merge'] == 'left_only'].drop('_merge', axis=1)
-
-    # print('added_to_df_csv', added_to_df_csv)
-    print('removed_from_df_csv', removed_from_df_csv)
-    print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-    print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+    added_to_df_csv = df.merge(df_db, how='left', indicator=True)
+    added_to_df_csv = added_to_df_csv[added_to_df_csv['_merge'] == 'left_only'].drop('_merge', axis=1)
 
     if not removed_from_df_csv.empty:
+        df.to_sql(table_name, engine, index=False, if_exists="replace")
+        print('removed_from_df_csv', removed_from_df_csv)
 
-        df.to_sql(table_name, engine, index=False, if_exists="replace")  # or append
-
+    if not added_to_df_csv.empty:
+        print('added_to_df_csv', added_to_df_csv)
+        df.to_sql(table_name, engine, index=False, if_exists="append")
 
 def main():
     start_postgres_service()
     create_pg_user_subprocess()
-    create_db_with_psql()
+    create_db_with_psql(db_name='olist')
+    create_db_with_psql(db_name='dash')
 
     # Se connecter à PostgreSQL
-    conn = create_postgres_connection()
+    conn = create_postgres_connection(db_name=DB_NAME)
     if conn is None:
         return
 
@@ -185,7 +184,6 @@ def main():
     # Charger les données
         df = load_data(value)
         print(key)
-        print(df)
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
@@ -195,12 +193,12 @@ def main():
         try:
             # Créer la table si elle n'existe pas
             # value[1](conn)
-            print('-----------------------------------------------')
-            print('-----------------------------------------------')
 
             # Copier les données
             copy_data_to_postgres(engine=conn, df=df, table_name=key)
+            print('-----------------------------------------------')
             compare_csv_to_postgresql(engine=conn, df=df, table_name=key)
+            print('-----------------------------------------------')
 
         except Exception as e:
             print(e)
