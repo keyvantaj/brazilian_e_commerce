@@ -1,5 +1,5 @@
 import streamlit as st
-from ingest import *
+from airflow.scripts.ingest import *
 
 st.title("Brazilian E-Commerce Public Dataset by Olist")
 

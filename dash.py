@@ -1,6 +1,6 @@
 import streamlit as st
 import altair as alt
-from ingest import *
+from airflow.scripts.ingest import *
 
 # Streamlit Title
 st.title("📈 Monthly Sales Growth - Olist")

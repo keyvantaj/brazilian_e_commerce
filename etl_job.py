@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.window import Window
 from pyspark.sql.functions import col, when, sum as spark_sum, to_date, date_format, lag, countDistinct
 from pyspark.sql.types import FloatType
-from ingest import *
+from airflow.scripts.ingest import *
 
 jdbc_url = "jdbc:postgresql://{}:{}/{}".format(DB_HOST, DB_PORT, DB_NAME)
 
