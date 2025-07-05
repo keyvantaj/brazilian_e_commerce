@@ -21,45 +21,6 @@ csv_paths = {'products': 'data/olist_products_dataset.csv',
              'product_categories': 'data/product_category_name_translation.csv',
              'order_payments': 'data/olist_order_payments_dataset.csv'}
 
-def coerce_column_types(df, target_types=None, errors="raise"):
-    """
-    Coerce DataFrame columns to specified data types.
-
-    Parameters:
-    - df: pandas.DataFrame
-    - target_types: dict (e.g. {'col1': 'str', 'col2': 'float'})
-                    If None, will use df.dtypes
-    - errors: 'raise', 'coerce', or 'ignore' (passed to pd.to_numeric or astype)
-
-    Returns:
-    - Converted DataFrame
-    """
-    df = df.copy()
-
-    if target_types is None:
-        print("Inferred types:")
-        print(df.dtypes)
-        return df  # Return as-is with printed types
-
-    for col, dtype in target_types.items():
-        if dtype in ['int', 'float', 'str']:
-            try:
-                if dtype == 'str':
-                    df[col] = df[col].astype(str)
-                elif dtype in ['int', 'float']:
-                    df[col] = pd.to_numeric(df[col], errors=errors)
-                print(f"✔ Converted '{col}' to {dtype}")
-            except Exception as e:
-                print(f"✘ Failed to convert '{col}' to {dtype}: {e}")
-        else:
-            try:
-                df[col] = df[col].astype(dtype, errors=errors)
-                print(f"✔ Converted '{col}' to {dtype}")
-            except Exception as e:
-                print(f"✘ Failed to convert '{col}' to {dtype}: {e}")
-
-    return df
-
 def create_db_with_psql(db_name):
     try:
         # Using psql command-line
